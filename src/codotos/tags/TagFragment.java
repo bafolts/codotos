@@ -50,7 +50,7 @@ public abstract class TagFragment {
 		
 		@return String Output of the tag fragment once executed
 	*/
-	abstract public String invoke() throws java.lang.Exception;
+	abstract public String invoke() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException;
 	
 	
 	/*

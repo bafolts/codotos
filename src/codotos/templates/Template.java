@@ -32,7 +32,7 @@ abstract public class Template {
 	public Template(){
 	
 		// Set the default bundle name
-		// TODO - Inherit this from the locale?		
+		// TODO - Inherit this from the locale
 		this.sResourceBundleName = ResourceBundle.DEFAULT_BUNDLE;
 	
 	}
@@ -47,7 +47,7 @@ abstract public class Template {
 		
 		@abstract
 	*/
-	abstract public String getText(HashMap<String,Object> mTemplateData) throws java.lang.Exception;
+	abstract public String getText(HashMap<String,Object> mTemplateData) throws codotos.exceptions.TemplateRuntimeException, codotos.exceptions.ResourceRuntimeException;
 	
 	
 	/*
@@ -73,7 +73,7 @@ abstract public class Template {
 		
 		@final
 	*/
-	final protected ResourceBundle getResourceBundle() throws java.lang.Exception {
+	final protected ResourceBundle getResourceBundle() throws codotos.exceptions.TemplateRuntimeException, codotos.exceptions.ResourceRuntimeException {
 		
 		// If we have not loaded our resource bundle yet
 		if(this.oCachedResourceBundle == null){

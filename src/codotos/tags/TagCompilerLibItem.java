@@ -2,6 +2,7 @@ package codotos.tags;
 
 
 import codotos.utils.CompilerUtils;
+import codotos.tags.TagTranslator;
 import codotos.Constants;
 
 
@@ -58,7 +59,6 @@ public class TagCompilerLibItem {
 	
 	
 	public String getNamespace(){
-		// TODO
 		return this.sSource;
 	}
 	
@@ -108,7 +108,7 @@ public class TagCompilerLibItem {
 	
 	
 	public static String getFixedTagDirClassName(String sClassName){
-			return "fel_"+ sClassName;
+		return TagTranslator.PREFIX + CompilerUtils.getClassName(sClassName);		
 	}
 
 }

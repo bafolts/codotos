@@ -2,8 +2,11 @@ package codotos.resources;
 
 
 import codotos.resources.ResourceBundle;
+import codotos.config.ConfigManager;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 
 
 /*
@@ -18,7 +21,7 @@ final public class ResourceBundleManager {
 		Map of resource bundles that have already been loaded		
 		@static
 	*/
-	static HashMap<String,ResourceBundle> mResourceBundles = new HashMap<String,ResourceBundle>();
+	static protected HashMap<String,ResourceBundle> mResourceBundles = new HashMap<String,ResourceBundle>();
 	
 	
 	/*
@@ -30,7 +33,7 @@ final public class ResourceBundleManager {
 		
 		@return ResourceBundleObject Resource Bundle object
 	*/
-	static final public ResourceBundle getBundle(String sResourceBundleName) throws java.lang.Exception {
+	static final public ResourceBundle getBundle(String sResourceBundleName) throws codotos.exceptions.ResourceRuntimeException {
 		
 		// If we have not already loaded this resource bundle
 		if(!ResourceBundleManager.mResourceBundles.containsKey(sResourceBundleName)){
@@ -55,7 +58,7 @@ final public class ResourceBundleManager {
 		
 		@return null
 	*/
-	static final public void load(String sResourceBundleName) throws java.lang.Exception {
+	static final public void load(String sResourceBundleName) throws codotos.exceptions.ResourceRuntimeException {
 		
 		// Create a new resource bundle
 		ResourceBundle oBundle = new ResourceBundle();
@@ -66,6 +69,18 @@ final public class ResourceBundleManager {
 		// Add it to the map
 		ResourceBundleManager.mResourceBundles.put(sResourceBundleName,oBundle);
 	
+	}
+	
+	
+	static final public void checkCache() throws codotos.exceptions.ResourceRuntimeException {
+		
+		// Iterate over each resource bundle, calling it's checkCache() method
+		Iterator oIterator = mResourceBundles.entrySet().iterator();
+		while (oIterator.hasNext()) {
+			Entry oPairs = (Entry) oIterator.next();
+			((ResourceBundle) oPairs.getValue()).checkCache();
+		}
+		
 	}
 	
 	

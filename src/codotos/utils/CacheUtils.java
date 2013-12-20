@@ -63,7 +63,7 @@ public final class CacheUtils {
 		
 		@return Object Cached Object
 	*/
-	public static Boolean isCacheCurrent(String sOriginalFile, String sCachedFile) throws java.lang.Exception{
+	public static Boolean isCacheCurrent(String sOriginalFile, String sCachedFile) throws codotos.exceptions.FileNotFoundException {
 		
 		// Get the cache file
 		File oCacheFile = new File(sCachedFile);
@@ -77,8 +77,8 @@ public final class CacheUtils {
 		File oOriginalFile = new File(sOriginalFile);
 		
 		if(!oOriginalFile.exists()){
-		
-			throw new java.lang.Exception("File '"+ sOriginalFile +"' does not exist");
+			
+			throw new codotos.exceptions.FileNotFoundException("File '"+ sOriginalFile +"' does not exist");
 			
 		}
 		

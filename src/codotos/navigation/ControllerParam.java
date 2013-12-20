@@ -1,16 +1,13 @@
 package codotos.navigation;
 
 
-import java.io.Serializable;
-
-
 /*
 	This class is the part of the MVC framework.
 	It is in responsible for containing a <param> variables name/value
 	
 	@serializable
 */
-public class ControllerParam implements Serializable {
+public class ControllerParam {
 
 	
 	/*

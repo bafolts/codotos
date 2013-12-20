@@ -2,9 +2,12 @@ package codotos.templates;
 
 
 import codotos.templates.TemplateBundle;
+import codotos.config.ConfigManager;
 
 import java.util.HashMap;
 import java.io.File;
+import java.util.Iterator;
+import java.util.Map.Entry;
 
 
 /*
@@ -13,13 +16,12 @@ import java.io.File;
 	@static
 */
 final public class TemplateBundleManager {
-
-
+	
 	/*
 		Map of template bundles that have already been loaded		
 		@static
 	*/
-	static HashMap<String,TemplateBundle> mTemplateBundles = new HashMap<String,TemplateBundle>();
+	private static HashMap<String,TemplateBundle> mTemplateBundles = new HashMap<String,TemplateBundle>();
 	
 	
 	/*
@@ -31,18 +33,18 @@ final public class TemplateBundleManager {
 		
 		@return TemplateBundleObject Template Bundle object
 	*/
-	static public TemplateBundle getBundle(String sTemplateBundleName) throws java.lang.Exception {
+	static public TemplateBundle getBundle(String sTemplateBundleName) throws codotos.exceptions.TemplateInterpreterException {
 	
 		// If we have not already loaded this template bundle
-		if(!TemplateBundleManager.mTemplateBundles.containsKey(sTemplateBundleName)){
+		if(!mTemplateBundles.containsKey(sTemplateBundleName)){
 		
 			// Load the requested template bundle
-			TemplateBundleManager.load(sTemplateBundleName);
+			load(sTemplateBundleName);
 			
 		}
 		
 		// Return the template bundle object
-		return TemplateBundleManager.mTemplateBundles.get(sTemplateBundleName);
+		return mTemplateBundles.get(sTemplateBundleName);
 		
 	}
 	
@@ -56,7 +58,7 @@ final public class TemplateBundleManager {
 		
 		@return null
 	*/
-	static public void load(String sTemplateBundleName) throws java.lang.Exception {
+	static private void load(String sTemplateBundleName) throws codotos.exceptions.TemplateInterpreterException {
 		
 		// Create a new template bundle
 		TemplateBundle oBundle = new TemplateBundle();
@@ -65,7 +67,19 @@ final public class TemplateBundleManager {
 		oBundle.load(sTemplateBundleName);
 		
 		// Add it to the map
-		TemplateBundleManager.mTemplateBundles.put(sTemplateBundleName,oBundle);
+		mTemplateBundles.put(sTemplateBundleName,oBundle);
+	
+	}
+	
+	
+	static final public void checkCache() throws codotos.exceptions.TemplateInterpreterException, codotos.exceptions.TemplateCompilerException {
+		
+		// Iterate over each resource bundle, calling it's checkCache() method
+		Iterator oIterator = mTemplateBundles.entrySet().iterator();
+		while (oIterator.hasNext()) {
+			Entry oPairs = (Entry) oIterator.next();
+			((TemplateBundle) oPairs.getValue()).checkCache();
+		}
 	
 	}
 	

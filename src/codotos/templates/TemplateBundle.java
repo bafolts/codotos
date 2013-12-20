@@ -2,6 +2,7 @@ package codotos.templates;
 
 
 import codotos.Constants;
+import codotos.context.Context;
 import codotos.templates.TemplateItem;
 import codotos.templates.Template;
 import codotos.utils.CacheUtils;
@@ -14,6 +15,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.FileInputStream;
 import java.io.File;
+import java.util.Iterator;
+import java.util.Map.Entry;
 
 
 /*
@@ -39,28 +42,41 @@ public class TemplateBundle {
 	*/
 	private HashMap<String, TemplateItem> mTemplateFilesToObject = new HashMap<String, TemplateItem>();
 	
+
+	/*
+		Last modified time of the template bundle file
+	*/
+	private long lLastModified = 0L;
+	
 	
 	/*
 		Given the template bundle name, attempt to load the template objects from cache. If not, parse the template file & create template objects.
 		
 		@param sTemplateBundleName String Name of the template bundle
 		
-		@return Boolean True if successful, False if error occured
+		@return null
 	*/
-	public Boolean load(String sTemplateBundleName) throws java.lang.Exception {
+	public void load(String sTemplateBundleName) throws codotos.exceptions.TemplateInterpreterException {
 		
 		this.sTemplateBundleName = sTemplateBundleName;
 		
-		// If we can load from the cache, we are done
-		if(this.loadFromCache()){
-			return true;
-		}
+		this.loadTemplate();
+	
+	}
+	
+	
+	private void loadTemplate() throws codotos.exceptions.TemplateInterpreterException {
+		
+		System.out.println("Processing template bundle "+ sTemplateBundleName +".txt");
 		
 		try{
-		
-			FileInputStream fstream = new FileInputStream(this.getTemplateFileName());
+			
+			File oFile = new File(this.getTemplateFileName());
+			FileInputStream fstream = new FileInputStream(oFile);
 			DataInputStream in = new DataInputStream(fstream);
 			BufferedReader br = new BufferedReader(new InputStreamReader(in));
+			
+			this.lLastModified = oFile.lastModified();
 			
 			String sLine;
 			while ((sLine = br.readLine()) != null){
@@ -69,34 +85,33 @@ public class TemplateBundle {
 			
 			in.close();
 		
-		}catch (java.lang.Exception e){//Catch exception if any
+		}catch (java.lang.Exception e){ // FileInputStream(), DataInputStream(), BufferedReader() exceptions
 			
-			System.err.println("Error reading template bundle file '"+ this.getTemplateFileName() +"'");
-			// TODO
-			//throw new java.lang.Exception("Error reading template bundle file '"+ this.getTemplateFileName() +"'");
-			return false;
+			codotos.exceptions.TemplateInterpreterException oException = new codotos.exceptions.TemplateInterpreterException("Error reading template bundle file '"+ this.getTemplateFileName() +"'");
+			
+			oException.initCause(e);
+			
+			throw oException;
 			
 		}
 		
-		// Save into our cache
-		this.saveCache();
-		
-		return true;	
 	}
 	
 	
 	/*
-		Returns a specific template object
+		Retrieves a specific template item object, based on the template name
 		
 		@param sTemplateName String Template name
 		
-		@return TemplateObject Template Object
+		@return TemplateItem TemplateItem Object
 	*/
-	public Template getTemplate(String sTemplateName) throws java.lang.Exception {
-		
+	private TemplateItem getTemplateItem(String sTemplateName) throws codotos.exceptions.TemplateInterpreterException {
+	
 		// Check if the template exists
 		if(!this.mTemplateNameToFiles.containsKey(sTemplateName)){
-			throw new java.lang.Exception("Template '"+ sTemplateName +"' does not exist in the '"+ this.sTemplateBundleName +"' template bundle'");
+		
+			throw new codotos.exceptions.TemplateInterpreterException("Template '"+ sTemplateName +"' does not exist in the '"+ this.sTemplateBundleName +"' template bundle");
+			
 		}
 		
 		/*
@@ -115,11 +130,25 @@ public class TemplateBundle {
 			
 		}
 		
-		// Grab our already-created template object
-		TemplateItem oTemplate = this.mTemplateFilesToObject.get(sTemplateFileLoc);
+		// Return our already-created template object
+		return this.mTemplateFilesToObject.get(sTemplateFileLoc);
+	
+	}
+	
+	
+	/*
+		Returns a specific template object
 		
-		// TODO - Re-evaluate this
-		return oTemplate.getInstance();
+		@param sTemplateName String Template name
+		
+		@return TemplateObject Template Object
+	*/
+	public Template getTemplate(String sTemplateName,Context oContext) throws codotos.exceptions.TemplateInterpreterException, codotos.exceptions.TemplateCompilerException, codotos.exceptions.TemplateRuntimeException {		
+		
+		// Grab our already-created template object
+		TemplateItem oTemplate = this.getTemplateItem(sTemplateName);
+		
+		return oTemplate.getInstance(oContext);
 	
 	}
 	
@@ -131,16 +160,6 @@ public class TemplateBundle {
 	*/
 	private String getTemplateFileName(){
 		return Constants.TEMPLATE_RESOURCES_DIR + this.sTemplateBundleName +".txt";
-	}
-	
-	
-	/*
-		Get the template cache file location
-		
-		@return String Template cache file location
-	*/
-	private String getTemplateCacheFileName(){
-		return Constants.TEMPLATE_CACHE_DIR + this.sTemplateBundleName +".cache";
 	}
 	
 	
@@ -168,51 +187,32 @@ public class TemplateBundle {
 	}
 	
 	
-	/*
-		Attempt to load the template bundle from cache
+	public final void checkCache() throws codotos.exceptions.TemplateInterpreterException, codotos.exceptions.TemplateCompilerException {
 		
-		@return Boolean True if successful, False if could not load from cache
-	*/
-	@SuppressWarnings("unchecked")
-	private Boolean loadFromCache() throws java.lang.Exception{
-		
-		// if cache is not current, abort
-		if(!CacheUtils.isCacheCurrent(this.getTemplateFileName(),this.getTemplateCacheFileName()))
-			return false;
-		
-		try{
-		
-			this.mTemplateNameToFiles = (HashMap<String, String>) CacheUtils.getCachedObject(this.getTemplateCacheFileName());
+		// If the file was modified since our last check
+		if(new File(this.getTemplateFileName()).lastModified() > this.lLastModified){
 			
-		}catch(java.lang.Exception e){
+			// To prevent issues when another request comes in at the same time and resources dont exist
+			synchronized(this){
 			
-			// TODO - warning
-			//throw new java.lang.Exception("Error opening template bundle cache");
-			return false;
-		
-		}
-		
-		// Let them know it was loaded successfully
-		return true;
-		
-	}
-	
-	
-	/*
-		Save the template bundle to a cache
-		
-		@return null
-	*/
-	private void saveCache(){
-		
-		try{
+				// Reset parameters
+				this.mTemplateNameToFiles.clear();
+				this.mTemplateFilesToObject.clear();
+				
+				// load the template again
+				this.loadTemplate();
 			
-			CacheUtils.setCachedObject(this.mTemplateNameToFiles,this.getTemplateCacheFileName());
-			
-		}catch(java.lang.Exception e){
+			}
 		
-			// TODO - warning
-			//throw new java.lang.Exception("Error saving template bundle cache");
+		// If we didn't fully reload things, check individual .tpl files
+		}else{
+		
+			// Iterate over each templateItem, calling it's checkCache() method
+			Iterator oIterator = mTemplateFilesToObject.entrySet().iterator();
+			while (oIterator.hasNext()) {
+				Entry oPairs = (Entry) oIterator.next();
+				((TemplateItem) oPairs.getValue()).checkCache();
+			}
 		
 		}
 		

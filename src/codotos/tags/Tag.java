@@ -1,15 +1,15 @@
 package codotos.tags;
 
 
+import codotos.config.ConfigManager;
 import codotos.context.Context;
 import codotos.tags.TagFragment;
 import codotos.tags.TagContext;
 import codotos.tags.TagAttribute;
 
 import java.util.Iterator;
-import java.util.HashMap;
+import java.io.PrintWriter;
 
-// TODO - When tag is constructed, check if tags dependencies are recent & compiled ?
 
 /*
 	This is the base class for all generated tag objects
@@ -17,12 +17,6 @@ import java.util.HashMap;
 	@abstract
 */	
 public abstract class Tag {
-	
-	
-	/*
-		Map that contains attribute definitions
-	*/
-	protected final HashMap<String,TagAttribute> mAttributeDefinitions = new HashMap<String,TagAttribute>();
 	
 	
 	/*
@@ -39,7 +33,7 @@ public abstract class Tag {
 	
 	/*
 		Parent Tag Object
-		TODO: This is not the direct parent, but the parent .tag, I think?
+		This is not the direct parent, but the parent .tag file in which this tag resides
 	*/
 	protected Tag oParent = null;
 	
@@ -53,26 +47,40 @@ public abstract class Tag {
 	/*
 		Initialize our tag
 	*/
-	public Tag() throws java.lang.Exception {
+	public Tag() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
 		
-		// if this tag depends on run-time compiled tags, check that they are up to date
-		this.checkTagResources();
+		try{
 		
-		// Create our tag context
-		this.oTagContext = new TagContext(this);
-		
-		// Define attributes, add them to the map, set default values
-		this.defineAttributes();
+			// If the config manager is setup to run non-precompiled tags & runtime tag cache checks are enabled, check the tags resources for changes
+			if(!ConfigManager.getBoolean("preCompiledTags") && ConfigManager.getBoolean("runtimeTagCacheChecks")){
+			
+				this.checkTagResources();
+				
+			}
+			
+			// Create our tag context
+			this.oTagContext = new TagContext(this);
+			
+		}catch(codotos.exceptions.TagRuntimeException e){
+			
+			e.setResourceName(this.getResourceName());
+			throw e;
+			
+		}
 	
 	}
 	
 	
 	/*
-		Overwritten by extending classes, defines the attributes for the tag
+		Returns the .tag file that defines this tag
 		
-		@return null
+		@return .Tag file location, or if its a taglib, return the full classname
 	*/
-	abstract protected void defineAttributes() throws java.lang.Exception;
+	protected String getResourceName() {
+	
+		return this.getClass().getName();
+	
+	}
 	
 	
 	/*
@@ -83,7 +91,7 @@ public abstract class Tag {
 		
 		@return String Output of the tag once executed
 	*/
-	abstract protected String output() throws java.lang.Exception;
+	abstract protected String output() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException;
 	
 	
 	/*
@@ -94,10 +102,28 @@ public abstract class Tag {
 		
 		@return null
 	*/
-	public final void display() throws java.lang.Exception{
-	
-		// TODO - translate me
-		System.out.print(this.output());
+	public final void display() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
+		
+		try{
+			
+			PrintWriter oResponseWriter = this.oContext.getResponse().getWriter();
+			
+			oResponseWriter.print(this.output());
+			
+		}catch(java.io.IOException e){
+		
+			codotos.exceptions.TagRuntimeException oException = new codotos.exceptions.TagRuntimeException("Error writing to the response writer");
+			
+			oException.initCause(e);
+			
+			throw oException;
+		
+		}catch(codotos.exceptions.TagRuntimeException e){
+			
+			e.setResourceName(this.getResourceName());
+			throw e;
+		
+		}
 	
 	}
 	
@@ -110,14 +136,22 @@ public abstract class Tag {
 		
 		@return String Output of the tag
 	*/
-	public final String doTag() throws java.lang.Exception{
+	public final String doTag() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
 		
-		// Check that all the required attributes have values
-		this.ensureRequiredAttributesSet();
+		try{
 		
-		// Do the tag
-		return this.output();
+			// Check that all the required attributes have values
+			this.ensureRequiredAttributesSet();
+			
+			// Do the tag
+			return this.output();
 		
+		}catch(codotos.exceptions.TagRuntimeException e){
+			
+			e.setResourceName(this.getResourceName());
+			throw e;
+		
+		}
 	
 	}	
 	
@@ -130,7 +164,7 @@ public abstract class Tag {
 		
 		@return String Output of the tags body fragment
 	*/
-	public final String doBody() throws java.lang.Exception{
+	public final String doBody() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
 		
 		// If we don't have a fragment for the body...
 		if(this.oBody == null){
@@ -150,19 +184,25 @@ public abstract class Tag {
 		
 		@return void
 	*/
-	protected final void checkTagResources() throws java.lang.Exception {
+	protected final void checkTagResources() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
 		
 		// Check to see if we already checked the resources, if we have, ignore
 		// NOTE: This is useful when we call the same tag multiple times
-		if(this.isTagResourcesAlreadyChecked())
+		if(this.isTagResourcesAlreadyChecked()){
 			return;
+		}
 		
 		// Get the resource dependencies, if they exist		
 		java.util.List<String> aTagResources = this.getTagResources();
 		
-		for(int i=0,len=aTagResources.size(); i<len; i++){
+		// Tag resources defined
+		if(aTagResources!=null){
+		
+			for(int i=0,len=aTagResources.size(); i<len; i++){
+				
+				TagCompiler.compileTagDirFile(aTagResources.get(i));
 			
-			TagCompiler.compileTagDirFile(aTagResources.get(i));
+			}
 		
 		}
 		
@@ -287,26 +327,11 @@ public abstract class Tag {
 	
 	
 	/*
-		Creates an attribute definition for the tag, if a default value is specified, set it now
+		Returns a static map of tag attributes for this tag
 		
-		@param sName String Name of the attribute		
-		@param sName String Attribute values expected data type
-		
-		@final
-		
-		@return null
+		@return java.util.HashMap<String,codotos.tags.TagAttribute> Map of TagAttribute objects with the key as the attribute name
 	*/
-	protected final void defineAttribute(String sName,String sType,Boolean sRequired,String sDefault) throws java.lang.Exception {
-		
-		TagAttribute oAttribute = new TagAttribute(sName,sType,sRequired,sDefault);
-		mAttributeDefinitions.put(sName,oAttribute);
-		
-		// If it has a default value, assign it now (it can be overwritten later)
-		if(oAttribute.hasDefaultValue()){
-			this.setAttribute(sName,oAttribute.getDefaultValue());
-		}
-	
-	}
+	protected abstract java.util.HashMap<String,codotos.tags.TagAttribute> getTagAttributes();
 	
 	
 	/*
@@ -319,19 +344,19 @@ public abstract class Tag {
 		
 		@return null
 	*/
-	public void setAttribute(String sName,Object oValue) throws java.lang.Exception {
+	public void setAttribute(String sName,Object oValue) throws codotos.exceptions.TagRuntimeException {
 		
 		// Make sure it is in the provided attributes list
-		if(!mAttributeDefinitions.containsKey(sName)){
-			throw new java.lang.Exception("Tag "+ this.getClass().getName() +" does not contain attribute '"+ sName +"'");
+		if(!this.getTagAttributes().containsKey(sName)){
+			throw new codotos.exceptions.TagRuntimeException("Tag does not contain attribute '"+ sName +"'");
 		}
 		
 		// Get the tag
-		TagAttribute oAttribute = mAttributeDefinitions.get(sName);
+		TagAttribute oAttribute = this.getTagAttributes().get(sName);
 		
 		// if type doesn't match
 		if(!oAttribute.isCorrectType(oValue)){
-			throw new java.lang.Exception("Tag "+ this.getClass().getName() +" attribute '"+ sName +"' accepts '"+ oAttribute.getType() +"', not '"+ oValue.getClass().getName() +"'");
+			throw new codotos.exceptions.TagRuntimeException("Tag attribute '"+ sName +"' accepts '"+ oAttribute.getType() +"', not '"+ (oValue==null?"null":oValue.getClass().getName()) +"'");
 		}
 		
 		// Assign the attribute to a local variable
@@ -379,10 +404,10 @@ public abstract class Tag {
 		
 		@final
 	*/
-	private final void ensureRequiredAttributesSet() throws java.lang.Exception {
+	private final void ensureRequiredAttributesSet() throws codotos.exceptions.TagRuntimeException {
 		
 		// Get the TagAttribute values
-		Iterator oAttributeValues = mAttributeDefinitions.values().iterator();
+		Iterator oAttributeValues = this.getTagAttributes().values().iterator();
 		
 		// Loop through each TagAttribute
 		while(oAttributeValues.hasNext()){
@@ -390,14 +415,24 @@ public abstract class Tag {
 			// get the TagAttribute
 			TagAttribute oTagAttribute = (TagAttribute) oAttributeValues.next();
 			
-			// If the attribute is required, and the attribute is not set...
-			if(oTagAttribute.isRequired() && !this.hasAttribute(oTagAttribute.getName())){
+			// If the attribute is not set
+			if(!this.hasAttribute(oTagAttribute.getName())){
+			
+				// If the attribute is required
+				if(oTagAttribute.isRequired()){
+					
+					throw new codotos.exceptions.TagRuntimeException("Tag requires attribute '"+ oTagAttribute.getName() +"'");
 				
-				// TODO - This is kind of weird, boolean never will return false, will just error up ...
-				throw new java.lang.Exception("Tag "+ this.getClass().getName() +" requires the attribute '"+ oTagAttribute.getName() +"'");
-			
+				}
+				
+				// if the attribute has a default value, set that now
+				if(oTagAttribute.hasDefaultValue()){
+				
+					this.setAttribute(oTagAttribute.getName(),oTagAttribute.getDefaultValue());
+					
+				}
+				
 			}
-			
 		
 		}
 	

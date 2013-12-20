@@ -1,13 +1,10 @@
 package codotos.resources;
 
 
-import java.io.Serializable;
-
-
 /*
 	This class is a representation of a resource object
 */	
-public class ResourceItem implements Serializable {
+public class ResourceItem {
 
 	
 	/*
@@ -87,10 +84,18 @@ public class ResourceItem implements Serializable {
 	*/
 	public String getText(int iQty, String ... aPlaceholders){
 		
-		// TODO - Convert the int to a string and put it at the front of the placeholders array
-		return this.getText(aPlaceholders);
+		String[] aStrings = new String[aPlaceholders.length + 1];
+		
+		aStrings[0] = Integer.toString(iQty);
+		
+		for(int i=0,len=aPlaceholders.length; i<len; i++){
+			aStrings[i+1] = aPlaceholders[i];
+		}
+		
+		return this.getText(aStrings);
 		
 	}
+	
 	
 	public String getText(String ... aPlaceholders){
 		

@@ -9,24 +9,29 @@ import java.util.Iterator;
 
 public final class ForEach extends Tag {
 
+
+	protected static java.util.HashMap<String,codotos.tags.TagAttribute> aTagAttributes = new java.util.HashMap<String,codotos.tags.TagAttribute>(1);
+	
+	
+	static{
+		aTagAttributes.put("items",new codotos.tags.TagAttribute("items","java.lang.Object",true,null));
+		aTagAttributes.put("name",new codotos.tags.TagAttribute("name","java.lang.String",true,null));
+	}
+	
+	
+	// @override
+	protected final java.util.HashMap<String,codotos.tags.TagAttribute> getTagAttributes(){	
+		return aTagAttributes;
+	}
+
 	
 	// Need this here because it can't extend Tag without having a constructor that 'throws'
-	public ForEach() throws java.lang.Exception {
+	public ForEach() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException  {
 		super();
 	}
 
-	
-	// @Override
-	// Define the attributes this tag contains
-	protected final void defineAttributes() throws java.lang.Exception {
-		
-		this.defineAttribute("items","java.util.Collection",true,null);
-		this.defineAttribute("name","java.lang.String",true,null);
-	
-	}
 
-
-	protected final String output() throws java.lang.Exception {
+	protected final String output() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
 		
 		StringBuilder sToReturn = new StringBuilder();
 		
@@ -41,7 +46,7 @@ public final class ForEach extends Tag {
 			
 			while(oIterator.hasNext()) {
 			
-				Object oValue = (Object) oIterator.next();
+				Object oValue = oIterator.next();
 				
 				this.getParent().getTagContext().setVariable(sName,oValue);
 				
@@ -52,14 +57,25 @@ public final class ForEach extends Tag {
 			// Clean up the variable
 			this.getParent().getTagContext().removeVariable(sName);
 			
+		}else if(aItems.getClass().isArray()){
 		
-		// TODO ????
+			for(int i=0, len=java.lang.reflect.Array.getLength(aItems); i<len; i++){
+				
+				Object oValue = java.lang.reflect.Array.get(aItems,i);
+				
+				this.getParent().getTagContext().setVariable(sName,oValue);
+				
+				sToReturn.append(this.doBody());
+				
+			}
+		
+		// TODO - Add java.util.Map?
 		//}else if(aItems instanceof java.util.Map<?,?>){
 		
 		
 		}else{
 		
-			throw new java.lang.Exception("Cannot iterate over type '"+ aItems.getClass().getName() +"'");
+			throw new codotos.exceptions.TagRuntimeException("Cannot iterate over type '"+ aItems.getClass().getName() +"'");
 		
 		}
 		

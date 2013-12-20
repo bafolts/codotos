@@ -5,12 +5,11 @@ import codotos.pages.PageManager;
 import codotos.context.Context;
 import codotos.controllers.Controller;
 import codotos.tags.Tag;
+import codotos.tags.TagLoader;
 
 import org.w3c.dom.Element;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.Serializable;
-
 
 /*
 	This class is an representation of a <destination> node in the Navigator Map XML file.  It is part of the MVC Framework.
@@ -20,7 +19,7 @@ import java.io.Serializable;
 	
 	@serializable
 */
-public class Destination implements Serializable {
+public class Destination {
 
 
 	/*
@@ -59,15 +58,15 @@ public class Destination implements Serializable {
 		
 		@param oDestinationNode Element <destination> DOM Node
 		
-		@return Boolean True if loaded successfully, False if an error occured
+		@return void
 	*/
-	public Boolean load(Element oDestinationNode){
+	public void load(Element oDestinationNode) throws codotos.exceptions.NavigatorMapInterpreterException {
 		
 		String sAttrVal = "";
 		
 		// If the <destination> node has a 'page' attribute, it is destination type "PAGE"
 		if(oDestinationNode.hasAttribute("page")){
-		
+			
 			sAttrVal = oDestinationNode.getAttribute("page");
 			this.eDestinationType = DESTINATION_TYPE_PAGE;
 			
@@ -98,18 +97,12 @@ public class Destination implements Serializable {
 		}else{
 		
 			// Throw an exception, this is a show stopper
-			System.out.println("<Destination> does not contain a 'page', 'route', 'redirect', 'stream' or 'binary' attribute");
-			// TODO
-			//throw new java.lang.Exception("<Destination> does not contain a 'page', 'route', 'redirect', 'stream' or 'binary' attribute");
-			return false;
+			throw new codotos.exceptions.NavigatorMapInterpreterException(codotos.tags.TagTranslator.getRawXML(oDestinationNode) +" does not contain a 'page', 'route', 'redirect', 'stream' or 'binary' attribute");
 			
 		}
 		
 		// Set the destination data equal to the value pulled from the attributes above
 		this.sDestinationData = sAttrVal;
-		
-		// If we got here, everything was successful
-		return true;
 		
 	}
 	
@@ -119,11 +112,10 @@ public class Destination implements Serializable {
 		examining the destination type and taking appropriate action
 		
 		@param oContext ContextObject Context Object
-		@param oController ControllerObject Controller Object
 		
-		@return Boolean True if executed successfully, False if an error occured
+		@return void
 	*/
-	public Boolean arrived(Context oContext,Controller oController) {
+	public void arrived(Context oContext) throws codotos.exceptions.NavigatorRuntimeException {
 		
 		// Examine the destination type enum
 		switch(this.eDestinationType){
@@ -133,57 +125,81 @@ public class Destination implements Serializable {
 				
 				Tag oPage = null;
 				
-				try{
+				try {
 				
 					// Request the specific Page Object from the page manager
-					oPage = PageManager.get(this.sDestinationData);
+					oPage = PageManager.get(this.sDestinationData,oContext);
 					
-				// Error occured while parsing, compiling, instantiating page and/or tags
-				}catch(java.lang.Exception e){
+					// Set the context for the page
+					oPage.setContext(oContext);
 					
-					// TODO - Toggle displaying/logging error info depending on which environment you are in?
-					System.out.println("TAG COMPILE EXCEPTION: "+ e.getMessage());
-					// TODO - Redirect to error route
-				
-				}
-				
-				// Set the context for the page
-				oPage.setContext(oContext);
-				
-				try{
-				
 					// Execute the Page Object & output data to the user via response object
 					oPage.display();
+				
+				// Error occured while compiling page and/or tags
+				}catch(codotos.exceptions.TagCompilerException e){
+				
+					codotos.exceptions.NavigatorRuntimeException oException = new codotos.exceptions.NavigatorRuntimeException("Error occured while compiling page and/or tags");
 					
-				}catch(java.lang.Exception e){
+					oException.initCause(e);
 					
-					// Error occured while executing page/tags contents
-					System.out.println("TAG RUNTIME EXCEPTION: "+ e.getMessage());
-					// TODO - Redirect to error route
+					throw oException;
+				
+				// Error occured while parsing page and/or tags
+				}catch(codotos.exceptions.TagInterpreterException e){
+				
+					codotos.exceptions.NavigatorRuntimeException oException = new codotos.exceptions.NavigatorRuntimeException("Error occured while parsing page and/or tags");
+					
+					oException.initCause(e);
+					
+					throw oException;
+				
+				// Error occured while instantiating and/or executing page and/or tags
+				}catch(codotos.exceptions.TagRuntimeException e){
+				
+					codotos.exceptions.NavigatorRuntimeException oException = new codotos.exceptions.NavigatorRuntimeException("Error occured while instantiating and/or executing page and/or tags");
+					
+					oException.initCause(e);
+					
+					throw oException;
 				
 				}
 				
-				return true;
+				break;
 			
 			// If type "Route", we will be navigating to another route based on the provided URI
 			case DESTINATION_TYPE_ROUTE:
 				
 				// Tell the navigator to follow a new route based on the provided route URI
-				return oContext.getNavigator().navigateUrl(oContext,this.sDestinationData);
+				Navigator.navigateUrl(oContext,this.sDestinationData);
+				
+				break;
 			
 			// If type "Redirect", we will simply redirect the user to the provided URI
 			case DESTINATION_TYPE_REDIRECT:
 				
-				// TODO TRANSLATOR
-				//header("Location: "+ this.sDestinationData);
-				return true;
+				try{
+				
+					oContext.getResponse().sendRedirect(this.sDestinationData);
+					
+				}catch(java.io.IOException e){
+				
+					codotos.exceptions.NavigatorRuntimeException oException = new codotos.exceptions.NavigatorRuntimeException("IOException while attempting to redirect");
+					
+					oException.initCause(e);
+					
+					throw oException;
+				
+				}
+				
+				break;
 			
 			// If type "Stream", ...???
 			case DESTINATION_TYPE_STREAM:
 				
 				// TODO - Re-evaluate this feature
 				
-				return false;
+				break;
 			
 			
 			// If type "Binary", ...???
@@ -191,16 +207,9 @@ public class Destination implements Serializable {
 				
 				// TODO - Re-evaluate this feature
 				
-				return false;
+				break;
 				
 		}
-		
-		// If we did not match any destination type enums, something went wrong
-		// Note: this should not occur since the load() method will throw an error if no match is found in the enum
-		System.out.println("<Destination> does not contain a 'page', 'route', 'redirect', 'stream' or 'binary' attribute");
-		// TODO
-		//throw new java.lang.Exception("<Destination> does not contain a 'page', 'route', 'redirect', 'stream' or 'binary' attribute");
-		return false;
 	
 	}
 

@@ -6,21 +6,28 @@ import codotos.tags.Tag;
 
 public final class If extends Tag {
 
+
+	protected static java.util.HashMap<String,codotos.tags.TagAttribute> aTagAttributes = new java.util.HashMap<String,codotos.tags.TagAttribute>(1);
+	
+	
+	static{
+		aTagAttributes.put("test",new codotos.tags.TagAttribute("test","java.lang.Object",true,null));
+	}
+	
+	
+	// @override
+	protected final java.util.HashMap<String,codotos.tags.TagAttribute> getTagAttributes(){	
+		return aTagAttributes;
+	}
+
 	
 	// Need this here because it can't extend Tag without having a constructor that 'throws'
-	public If() throws java.lang.Exception {
+	public If() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException  {
 		super();
 	}
 
 
-	protected final void defineAttributes() throws java.lang.Exception {
-		
-		this.defineAttribute("test","java.lang.Object",true,null);
-		
-	}
-
-
-	protected final Boolean getTest() throws java.lang.Exception {
+	protected final Boolean getTest() throws codotos.exceptions.TagRuntimeException {
 		
 		Object oValue = this.getAttribute("test");
 		
@@ -29,14 +36,14 @@ public final class If extends Tag {
 		}else if(oValue instanceof Boolean){
 			return (Boolean) oValue;
 		}else{
-			throw new java.lang.Exception("Cannot convert type '"+ oValue.getClass().getName() +"' to Boolean. (Tag "+ this.getClass().getName() +")");
+			throw new codotos.exceptions.TagRuntimeException("Cannot convert type '"+ oValue.getClass().getName() +"' to Boolean. (Tag "+ this.getClass().getName() +")");
 		}
 	
 	}
 
 
 
-	protected final String output() throws java.lang.Exception{
+	protected final String output() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
 		
 		if(this.getTest()){
 			

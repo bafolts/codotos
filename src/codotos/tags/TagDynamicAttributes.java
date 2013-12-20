@@ -15,7 +15,7 @@ public abstract class TagDynamicAttributes extends Tag {
 
 	
 	// Need this here because it can't extend Tag without having a constructor that 'throws'
-	public TagDynamicAttributes() throws java.lang.Exception {
+	public TagDynamicAttributes() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException  {
 		super();
 	}
 	
@@ -35,21 +35,21 @@ public abstract class TagDynamicAttributes extends Tag {
 	}
 	
 	
-	public final void setAttribute(String sName,Object oValue) throws java.lang.Exception {
+	public final void setAttribute(String sName,Object oValue) throws codotos.exceptions.TagRuntimeException {
 		
 		// Dynamic attributes means that not all attributes need to be defined, however we can specify a few attributes which must
 		// be defined, and specify their default values and if they are required
 		
 		// See if the attribute is defined
-		if(this.mAttributeDefinitions.containsKey(sName)){
+		if(this.getTagAttributes().containsKey(sName)){
 			
 			// Get the tag
-			TagAttribute oAttribute = this.mAttributeDefinitions.get(sName);
+			TagAttribute oAttribute = this.getTagAttributes().get(sName);
 		
 			// if type doesn't match
 			if(!oAttribute.isCorrectType(oValue)){
 				
-				throw new java.lang.Exception("Tag "+ this.getClass().getName() +" attribute '"+ sName +"' accepts '"+ oAttribute.getType() +"', not '"+ oValue.getClass().getName() +"'");
+				throw new codotos.exceptions.TagRuntimeException("Tag "+ this.getClass().getName() +" attribute '"+ sName +"' accepts '"+ oAttribute.getType() +"', not '"+ oValue.getClass().getName() +"'");
 			
 			}
 		

@@ -9,7 +9,6 @@ import codotos.context.Context;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
@@ -27,7 +26,7 @@ import java.util.regex.Matcher;
 	
 	@serializable
 */
-public class Route implements Serializable {
+public class Route {
 	
 	
 	/*
@@ -82,24 +81,22 @@ public class Route implements Serializable {
 		
 		@param oRouteNode Element <Route> DOM Node
 		
-		@return Boolean True if loaded successfully, False if unsuccessful
+		@return void
 	*/
-	public Boolean load(Element oRouteNode){
+	public void load(Element oRouteNode) throws codotos.exceptions.NavigatorMapInterpreterException {
 		
-		// Load the URI Matching data from the node, return false if unsuccessful
-		if(this.loadRouteMatch(oRouteNode)==false)
-			return false;
+		// Load the URI Matching data from the node
+		// Do this only for <route> nodes, not <error> or <404> nodes
+		if(oRouteNode.getTagName().toUpperCase().equals("ROUTE")){
+			this.loadRouteMatch(oRouteNode);
+		}
 		
 		// Load the controller data from the node, return false if unsuccessful
-		if(this.loadRouteController(oRouteNode)==false)
-			return false;
+		this.loadRouteController(oRouteNode);
 		
 		// Load the destination data from the node, return false if unsuccessful
-		if(this.loadRouteDestinations(oRouteNode)==false)
-			return false;
+		this.loadRouteDestinations(oRouteNode);
 		
-		// Everything loaded successfully
-		return true;		
 	}
 	
 	
@@ -108,9 +105,9 @@ public class Route implements Serializable {
 		
 		@param oRouteNode Element <Route> DOM Node
 		
-		@return Boolean True if loaded successfully, False if unsuccessful
+		@return void
 	*/
-	private Boolean loadRouteMatch(Element oRouteNode){	
+	private void loadRouteMatch(Element oRouteNode) throws codotos.exceptions.NavigatorMapInterpreterException {	
 		
 		String sAttrVal = "";
 		
@@ -130,18 +127,12 @@ public class Route implements Serializable {
 		}else{
 			
 			// Throw an error, this is a show stopper
-			System.out.println("<Route> does not contain 'match' or 'regexp' attribute");
-			// TODO
-			//throw new java.lang.Exception("<Route> does not contain 'match' or 'regexp' attribute");
-			return false;
+			throw new codotos.exceptions.NavigatorMapInterpreterException(codotos.tags.TagTranslator.getRawXML(oRouteNode) +" does not contain 'match' or 'regexp' attribute");
 		
 		}
 		
 		// Set the route match data equal to the value pulled from the attributes above
 		this.sRouteMatchCriteria = sAttrVal;
-		
-		// Everything loaded successfully
-		return true;
 		
 	}
 	
@@ -151,9 +142,9 @@ public class Route implements Serializable {
 		
 		@param oRouteNode Element <Route> DOM Node
 		
-		@return Boolean True if loaded successfully, False if unsuccessful
+		@return void
 	*/
-	private Boolean loadRouteController(Element oRouteNode){
+	private void loadRouteController(Element oRouteNode) throws codotos.exceptions.NavigatorMapInterpreterException {
 		
 		// Find the first <controller> node
 		Element oControllerNode = (Element) oRouteNode.getElementsByTagName("controller").item(0);
@@ -165,32 +156,21 @@ public class Route implements Serializable {
 			
 			// If no "src" attribute is provided, or it is empty
 			if(this.sController == null || this.sController.length() == 0){
-				System.out.println("<Controller> does not contain a 'src' attribute");
-				// TODO
-				// throw new java.lang.Exception("<Controller> does not contain a 'src' attribute");
-				return false;
+			
+				throw new codotos.exceptions.NavigatorMapInterpreterException(codotos.tags.TagTranslator.getRawXML(oControllerNode) +" does not contain a 'src' attribute");
+				
 			}
 			
 			// Load the controller param key/vaue pairs
-			if(!this.loadControllerParams(oControllerNode)){
-				System.out.println("Error loading controller <param>'s");
-				// TODO
-				//throw new java.lang.Exception("Error loading controller <param>'s");
-				return false;
-			}
+			this.loadControllerParams(oControllerNode);
 		
 		// No <controller> specified
 		}else{
 			
-			System.out.println("<Route> does not contain a <controller> node");
-			// TODO
-			//throw new java.lang.Exception("<Route> does not contain a <controller> node");
-			return false;
+			throw new codotos.exceptions.NavigatorMapInterpreterException(codotos.tags.TagTranslator.getRawXML(oRouteNode) +" does not contain a <controller> node");
 		
 		}
 		
-		// Everything loaded successfully
-		return true;		
 	}
 	
 	
@@ -199,9 +179,9 @@ public class Route implements Serializable {
 		
 		@param oControllerNode Element <Controller> DOM Node
 		
-		@return Boolean True if loaded successfully, False if unsuccessful
+		@return void
 	*/
-	private Boolean loadControllerParams(Element oControllerNode){
+	private void loadControllerParams(Element oControllerNode) throws codotos.exceptions.NavigatorMapInterpreterException {
 		
 		// Grab all the <param>'s
 		NodeList aParamNodes = oControllerNode.getElementsByTagName("param");
@@ -212,14 +192,10 @@ public class Route implements Serializable {
 			Element oParamNode = (Element) aParamNodes.item(i);
 			
 			// Load the controller <param>
-			if(this.loadControllerParam(oParamNode) == false){
-				return false;
-			}
+			this.loadControllerParam(oParamNode);
 			
 		}
 		
-		// Everything loaded successfully
-		return true;	
 	}
 	
 	
@@ -228,19 +204,18 @@ public class Route implements Serializable {
 		
 		@param oParamNode Element <Param> DOM Node
 		
-		@return Boolean True if loaded successfully, False if unsuccessful
+		@return void
 	*/
-	private Boolean loadControllerParam(Element oParamNode){
+	private void loadControllerParam(Element oParamNode) throws codotos.exceptions.NavigatorMapInterpreterException {
 		
 		// Grab the "name" attribute
 		String sName = oParamNode.getAttribute("name");
 		
 		// If no name provided, invalid
 		if(sName == null || sName.length() == 0){
-			System.out.println("<param> requires a 'name' attribute");
-			// TODO
-			//throw new java.lang.Exception("<param> requires a 'name' attribute");
-			return false;
+		
+			throw new codotos.exceptions.NavigatorMapInterpreterException(codotos.tags.TagTranslator.getRawXML(oParamNode) +" requires a 'name' attribute");
+		
 		}
 		
 		// Grab the "value" attribute
@@ -252,8 +227,6 @@ public class Route implements Serializable {
 		// Push the controller param into the array
 		this.aControllerParams.add(oParam);
 		
-		// Everything loaded successfully
-		return true;		
 	}
 	
 	
@@ -262,9 +235,9 @@ public class Route implements Serializable {
 		
 		@param oRouteNode Element <Route> DOM Node
 		
-		@return Boolean True if loaded successfully, False if unsuccessful
+		@return void
 	*/
-	private Boolean loadRouteDestinations(Element oRouteNode){
+	private void loadRouteDestinations(Element oRouteNode) throws codotos.exceptions.NavigatorMapInterpreterException {
 		
 		// Grab the <destination> nodes
 		NodeList aDestinationNodes = oRouteNode.getElementsByTagName("destination");
@@ -275,14 +248,10 @@ public class Route implements Serializable {
 			Element oDestinationNode = (Element) aDestinationNodes.item(i);
 		
 			// Load the destination, returns false if an error occured
-			if(this.loadRouteDestination(oDestinationNode) == false){
-				return false;
-			}
+			this.loadRouteDestination(oDestinationNode);
 		
 		}
 		
-		// Everything loaded successfully
-		return true;	
 	}
 	
 	
@@ -291,9 +260,9 @@ public class Route implements Serializable {
 		
 		@param oDestinationNode Element <destination> DOM Node
 		
-		@return Boolean True if loaded successfully, False if unsuccessful
+		@return void
 	*/
-	private Boolean loadRouteDestination(Element oDestinationNode){
+	private void loadRouteDestination(Element oDestinationNode) throws codotos.exceptions.NavigatorMapInterpreterException {
 		
 		// Grab the "key" attribute
 		String sDestinationKey = oDestinationNode.getAttribute("key");
@@ -309,24 +278,11 @@ public class Route implements Serializable {
 		
 		// Attempt to load the destination object using the <destination> node
 		// Returns true on success, false on error
-		if(oDestination.load(oDestinationNode)){
+		oDestination.load(oDestinationNode);
 			
-			// Add our destination object into the map using the key attribute as the map key
-			this.mDestinations.put(sDestinationKey,oDestination);
+		// Add our destination object into the map using the key attribute as the map key
+		this.mDestinations.put(sDestinationKey,oDestination);
 		
-		// Error occured loading destination data
-		}else{
-			
-			// Show stopper
-			System.out.println("Navigator Destination object could not be loaded from the <destination> object");
-			// TODO
-			//throw new java.lang.Exception("Navigator Destination object could not be loaded from the <destination> object");
-			return false;
-			
-		}
-		
-		// Everything loaded successfully
-		return true;		
 	}
 	
 	
@@ -362,11 +318,7 @@ public class Route implements Serializable {
 		
 		}
 		
-		// If we did not match any route type enums, something went wrong
 		// Note: this should not occur since the load() method will throw an error if no match is found in the enum
-		System.out.println("<Route> does not contain 'match' or 'regexp' attribute");
-		// TODO
-		//throw new java.lang.Exception("<Route> does not contain 'match' or 'regexp' attribute");
 		return false;
 		
 	}
@@ -382,20 +334,18 @@ public class Route implements Serializable {
 		
 		@param oContext ContextObject Context Object
 		
-		@return Boolean True if followed successfully, False if unsuccessful
+		@return void
 	*/	
-	public Boolean follow(Context oContext){
+	public void follow(Context oContext) throws codotos.exceptions.NavigatorRuntimeException {
 		
 		// Clear the existing controller params we loaded into the context object
+		// In case the routes destination routed it to another route (and thus another controller)
 		oContext.clearParams();
 		
 		// Load each controller param into the context object
 		for(ControllerParam oParam : this.aControllerParams){
 			oContext.addParam(oParam.getName(),oParam.getValue());
 		}
-		
-		// TODO - DEBUG
-		//System.out.println("Creating Controller Instance "+ this.sController);
 		
 		Controller oController = null;
 		
@@ -406,9 +356,11 @@ public class Route implements Serializable {
 			
 		}catch(java.lang.Exception e){
 			
-			// TODO
-			System.out.println("Could not create controller '"+ this.sController +"'");
-			return false;
+			codotos.exceptions.NavigatorRuntimeException oException = new codotos.exceptions.NavigatorRuntimeException("Could not create controller '"+ this.sController +"'");
+			
+			oException.initCause(e);
+			
+			throw oException;
 		
 		}
 		
@@ -418,26 +370,31 @@ public class Route implements Serializable {
 		//set the context for the controller
 		oController.setContext(oContext);
 		
-		// Tell the controller to take over & do its thing
 		// Destination key will be returned that we will map to a destination object
-		String sDestinationKey = oController.control();
+		String sDestinationKey = null;
+		
+		// Tell the controller to take over & do its thing
+		// This can throw user defined errors that we need to trickle up, hence the use of java.lang.Exception
+		try{
+		
+			sDestinationKey = oController.control();
+			
+		}catch(java.lang.Exception e){
+			
+			// Show stopper, no suitable destination found
+			codotos.exceptions.NavigatorRuntimeException oException = new codotos.exceptions.NavigatorRuntimeException("Error following route '"+ this.sController +"'");
+			
+			oException.initCause(e);
+			
+			throw oException;
+			
+		}
 		
 		// If we cannot find a matching destination based on the key
 		if(!this.mDestinations.containsKey(sDestinationKey)){
 			
-			// Set the destination key to an empty string, there may be a 'catch-all' destination
-			sDestinationKey = "";
-			
-			// Look for a catch-all destination
-			if(!this.mDestinations.containsKey(sDestinationKey)){
-			
-				// Show stopper, no suitable destination found
-				System.out.println("Destination '"+ sDestinationKey +"' does not exist");
-				// TODO
-				//throw new java.lang.Exception("Destination '"+ sDestinationKey +"' does not exist");
-				return false;
-				
-			}
+			// Show stopper, no suitable destination found
+			throw new codotos.exceptions.NavigatorRuntimeException("Destination '"+ sDestinationKey +"' does not exist");
 			
 		}
 		
@@ -446,9 +403,7 @@ public class Route implements Serializable {
 		
 		// Tell the destination we have arrived
 		// Destination will return true if its actions are completed successfully, false otherwise
-		oDestination.arrived(oContext,oController);
-		
-		return true;
+		oDestination.arrived(oContext);
 		
 	}
 	

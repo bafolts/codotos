@@ -6,25 +6,30 @@ import codotos.tags.Tag;
 
 public final class Set extends Tag {
 
+
+	protected static java.util.HashMap<String,codotos.tags.TagAttribute> aTagAttributes = new java.util.HashMap<String,codotos.tags.TagAttribute>(3);
+	
+	
+	static{
+		aTagAttributes.put("name",new codotos.tags.TagAttribute("name","java.lang.String",true,null));
+		aTagAttributes.put("scope",new codotos.tags.TagAttribute("scope","java.lang.String",false,"request"));
+		aTagAttributes.put("value",new codotos.tags.TagAttribute("value","java.lang.Object",false,null));
+	}
+	
+	
+	// @override
+	protected final java.util.HashMap<String,codotos.tags.TagAttribute> getTagAttributes(){	
+		return aTagAttributes;
+	}
+
 	
 	// Need this here because it can't extend Tag without having a constructor that 'throws'
-	public Set() throws java.lang.Exception {
+	public Set() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException  {
 		super();
 	}
 
-	
-	// @Override
-	// Define the attributes this tag contains
-	protected final void defineAttributes() throws java.lang.Exception {
-		
-		this.defineAttribute("name","java.lang.String",true,null);
-		this.defineAttribute("scope","java.lang.String",false,"request");
-		this.defineAttribute("value","java.lang.Object",true,null); // TODO - Object from expression language?
-	
-	}
 
-
-	protected final String output() throws java.lang.Exception {
+	protected final String output() throws codotos.exceptions.TagRuntimeException, codotos.exceptions.TagCompilerException, codotos.exceptions.TagInterpreterException {
 		
 		String sName = (String) this.getAttribute("name");
 		String sScope = "page";

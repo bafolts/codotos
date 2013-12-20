@@ -1,20 +1,21 @@
 package codotos.context;
 
 
-import codotos.context.Request;
 import codotos.navigation.Navigator;
 import codotos.controllers.Controller;
-//import codotos.context.Response; TODO
+import codotos.tags.TagLoader;
 
 import java.util.HashMap;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 
 /*
 	The purpose of this class is to contain the current context. It holds server, environment, request, response, mvc data.
 	
-	TODO:
+	TODO: Things to implement
 		- Method to return Server Data
-		- Method to return response object
 		- Method to return environment data
 		- Should mvc controller/params/variables be part of the navigator object?
 */
@@ -33,18 +34,17 @@ public class Context {
 	/*
 		Request Object
 	*/
-	private Request oRequest = null;
+	private HttpServletRequest oRequest = null;
 	
 	/*
 		Response Object
 	*/
-	// TODO
-	//private Response oResponse = null;
+	private HttpServletResponse oResponse = null;
 	
 	/*
-		MVC Navigator Object
+		Generated Class Loader
 	*/
-	private Navigator oNavigator = null;
+	private TagLoader oGeneratedClassLoader = null;
 	
 	/*
 		MVC Navigator Route Controller Object
@@ -62,6 +62,11 @@ public class Context {
 	*/
 	private HashMap<String,Object> mVariables = new HashMap<String,Object>();
 	
+	/*
+		Attributes that can be set/retrieved from the Context
+	*/
+	private HashMap<String,Object> mAttributes = new HashMap<String,Object>();
+	
 	
 	/*
 		Setup the context object
@@ -72,13 +77,7 @@ public class Context {
 	*/
 	public Context(){
 		
-		// TODO TRANSLATOR
-		//this.mServerData = &$_SERVER;
 		
-		// TODO TRANSLATOR
-		//this.mEnvData = &$_ENV;
-		
-		this.oRequest = new Request();
 
 	}
 	
@@ -88,30 +87,58 @@ public class Context {
 		
 		@return oRequest RequestObject Request Object
 	*/
-	public Request getRequest(){
+	public HttpServletRequest getRequest(){
 		return this.oRequest;
 	}
 	
 	
 	/*
-		Set the navigator object
+		Set the request object
 		
-		@param oNavigator NavigatorObject Navigator Object to be set
-		
-		@return null
+		@param HttpServletRequest oRequest The Request Object
 	*/
-	public void setNavigator(Navigator oNavigator){
-		this.oNavigator = oNavigator;
+	public void setRequest(HttpServletRequest oRequest){
+		this.oRequest = oRequest;
 	}
 	
 	
 	/*
-		Get the navigator object
+		Get the response object
 		
-		@return oNavigator NavigatorObject Navigator Object
+		@return oResponse ResponseObject Response Object
 	*/
-	public Navigator getNavigator(){
-		return this.oNavigator;
+	public HttpServletResponse getResponse(){
+		return this.oResponse;
+	}
+	
+	
+	/*
+		Set the response object
+		
+		@param HttpServletResponse oResponse The Response Object
+	*/
+	public void setResponse(HttpServletResponse oResponse){
+		this.oResponse = oResponse;
+	}
+	
+	
+	/*
+		Get the generated class loader instance
+		
+		@return TagLoader Generated Class Loader instance
+	*/
+	public TagLoader getGeneratedClassLoader(){
+		return this.oGeneratedClassLoader;
+	}
+	
+	
+	/*
+		Set the generated class loader instance
+		
+		@param TagLoader oGeneratedClassLoader The Generated Class Loader
+	*/
+	public void setGeneratedClassLoader(TagLoader oGeneratedClassLoader){
+		this.oGeneratedClassLoader = oGeneratedClassLoader;
 	}
 	
 	
@@ -218,6 +245,43 @@ public class Context {
 	*/
 	public Object getVariable(String sName){
 		return this.mVariables.get(sName);
+	}
+	
+	
+	/*
+		Set a context attribute, given a name & value
+		
+		@param sName String Attribute name
+		@param oValue Object Attribute value
+		
+		@return null
+	*/
+	public void setAttribute(String sName,Object oValue){
+		this.mAttributes.put(sName,oValue);
+	}
+	
+	
+	/*
+		Determine if a context attribute exists
+		
+		@param sName String Attribute name
+		
+		@return Boolean True if attribute exists, False if it does not
+	*/
+	public Boolean hasAttribute(String sName){
+		return this.mAttributes.containsKey(sName);
+	}
+	
+	
+	/*
+		Get a context attribute, given its name
+		
+		@param sName String Attribute name
+		
+		@return Object Attribute value
+	*/
+	public Object getAttribute(String sName){
+		return this.mAttributes.get(sName);
 	}
 	
 

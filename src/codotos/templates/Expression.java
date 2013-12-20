@@ -10,14 +10,26 @@ import java.util.HashMap;
 public class Expression {
 
 
-	public static String evaluate(String sRawExpression,HashMap<String,Object> mTemplateData) throws java.lang.Exception {
-	
-		return Expression.compileLine(sRawExpression,mTemplateData).toString();
+	public static Object evaluate(String sRawExpression,HashMap<String,Object> mTemplateData) throws codotos.exceptions.TemplateRuntimeException {
+		
+		try{
+		
+			return Expression.compileLine(sRawExpression,mTemplateData).toString();
+			
+		}catch(codotos.exceptions.ExpressionRuntimeException e){
+		
+			codotos.exceptions.TemplateRuntimeException oException = new codotos.exceptions.TemplateRuntimeException(e.getMessage());
+			
+			oException.initCause(e);
+			
+			throw oException;
+			
+		}
 
 	}
 	
 	
-	private static Object compileLine(String sRawLine,HashMap<String,Object> mTemplateData) throws java.lang.Exception {
+	private static Object compileLine(String sRawLine,HashMap<String,Object> mTemplateData) throws codotos.exceptions.ExpressionRuntimeException {
 		
 		// "  blah  ${ Boo } "
 		// (String) "  blah  " + EVAL +" "
@@ -46,7 +58,7 @@ public class Expression {
 	}
 	
 	
-	private static Object compileExpression(String sRawText,HashMap<String,Object> mTemplateData) throws java.lang.Exception {
+	private static Object compileExpression(String sRawText,HashMap<String,Object> mTemplateData) throws codotos.exceptions.ExpressionRuntimeException {
 		
 		if(sRawText.isEmpty())
 			return "";
@@ -71,7 +83,7 @@ public class Expression {
 	}
 	
 	
-	private static Object buildBean(String sOriginalText, Object oBean,String sGetter) throws java.lang.Exception {
+	private static Object buildBean(String sOriginalText, Object oBean,String sGetter) throws codotos.exceptions.ExpressionRuntimeException {
 		
 		// If the bean is null
 		if(oBean == null){
@@ -83,7 +95,7 @@ public class Expression {
 			
 			// We cant call the getters on a null
 			}else{
-				throw new java.lang.Exception("No '"+ sGetter +"' on null object. ("+ sOriginalText +")");
+				throw new codotos.exceptions.ExpressionRuntimeException("No '"+ sGetter +"' on null object. ("+ sOriginalText +")");
 			}
 			
 		}
@@ -96,15 +108,23 @@ public class Expression {
 		
 		// if it does not exist
 		if(oMethod == null){
-			throw new java.lang.Exception("'"+ oBean.getClass().getName() +"' does not have a method named '"+ sGetterName +"'. ("+ sOriginalText +")");
+			throw new codotos.exceptions.ExpressionRuntimeException("'"+ oBean.getClass().getName() +"' does not have a method named '"+ sGetterName +"'. ("+ sOriginalText +")");
 		}
 		
 		Object oNewBean = null;
 		
 		try{
+		
 			oNewBean = oMethod.invoke(oBean);
+			
 		}catch(java.lang.Exception e){
-			throw new java.lang.Exception("Cannot call '"+ sGetterName +"' on '"+ oBean.getClass().getName() +"'. ("+ sOriginalText +")");
+		
+			codotos.exceptions.ExpressionRuntimeException oException = new codotos.exceptions.ExpressionRuntimeException("Cannot call '"+ sGetterName +"' on '"+ oBean.getClass().getName() +"'. ("+ sOriginalText +")");
+			
+			oException.initCause(e);
+			
+			throw oException;
+			
 		}
 		
 		if(aGetters.length==2){

@@ -14,13 +14,12 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.FileInputStream;
 import java.io.File;
-import java.io.Serializable;
 
 
 /*
 	This class is a representation of a resource bundle, which is a group of resource objects. Bundles can be quickly swapped for other bundles, which makes internationalization easier
 */	
-public class ResourceBundle implements Serializable {
+public class ResourceBundle {
 
 
 	/*
@@ -39,6 +38,12 @@ public class ResourceBundle implements Serializable {
 		Map of resource objects, key is the resource name
 	*/
 	private HashMap<String,ResourceItem> mResources = new HashMap<String,ResourceItem>();
+
+
+	/*
+		Last modified time of the resource bundle file
+	*/
+	private long lLastModified = 0L;
 	
 	
 	/*
@@ -46,22 +51,30 @@ public class ResourceBundle implements Serializable {
 		
 		@param sResourceBundleName String Name of the resource bundle
 		
-		@return Boolean True if successful, False if error occured
+		@return null
 	*/
-	public Boolean load(String sResourceBundleName) throws java.lang.Exception {
+	public void load(String sResourceBundleName) throws codotos.exceptions.ResourceRuntimeException {
 		
 		this.sResourceBundleName = sResourceBundleName;
 		
-		// If we can load from the cache, we are done
-		if(this.loadFromCache()){
-			return true;
-		}
+		this.loadResources();
+		
+	}
+	
+	
+	private void loadResources() throws codotos.exceptions.ResourceRuntimeException {
+		
+		System.out.println("Processing resource "+ sResourceBundleName +".txt");
 		
 		try{
-		
-			FileInputStream fstream = new FileInputStream(this.getResourceFileName());
+			
+			File oFile = new File(this.getResourceFileName());
+			FileInputStream fstream = new FileInputStream(oFile);
 			DataInputStream in = new DataInputStream(fstream);
 			BufferedReader br = new BufferedReader(new InputStreamReader(in));
+			
+			// Update our last modified value
+			lLastModified = oFile.lastModified();
 			
 			String sLine;
 			while ((sLine = br.readLine()) != null){
@@ -72,17 +85,14 @@ public class ResourceBundle implements Serializable {
 		
 		}catch (java.lang.Exception e){//Catch exception if any
 			
-			System.err.println("Error reading resource bundle file '"+ this.getResourceFileName() +"'");
-			// TODO
-			//throw new java.lang.Exception("Error reading resource bundle file '"+ this.getResourceFileName() +"'");
-			return false;
+			codotos.exceptions.ResourceRuntimeException oException = new codotos.exceptions.ResourceRuntimeException("Unable to open resource bundle file '"+ this.getResourceFileName() +"'");
+			
+			oException.initCause(e);
+			
+			throw oException;
 			
 		}
 		
-		// Save into our cache
-		this.saveCache();
-		
-		return true;	
 	}
 	
 	
@@ -93,13 +103,12 @@ public class ResourceBundle implements Serializable {
 		
 		@return ResourceObject Resource Object
 	*/
-	public ResourceItem getResource(String sResourceName){
+	public ResourceItem getResource(String sResourceName) throws codotos.exceptions.ResourceRuntimeException {
 		
 		// Check if the resource exists
 		if(!this.mResources.containsKey(sResourceName)){
-		
-			//throw new java.lang.Exception("Resource '"+ sResourceName +"' does not exist in the '"+ this.sResourceBundleName +"' resource bundle'");
-			return null;
+			
+			throw new codotos.exceptions.ResourceRuntimeException("Resource '"+ sResourceName +"' does not exist in the '"+ this.sResourceBundleName +"' resource bundle");
 		
 		}
 		
@@ -115,66 +124,6 @@ public class ResourceBundle implements Serializable {
 	*/
 	private String getResourceFileName(){
 		return Constants.RESOURCE_RESOURCES_DIR + this.sResourceBundleName +".txt";
-	}
-	
-	
-	/*
-		Get the resource cache file location
-		
-		@return String Resource cache file location
-	*/
-	private String getResourceCacheFileName(){
-		return Constants.RESOURCE_CACHE_DIR + this.sResourceBundleName +".cache";
-	}
-	
-	
-	/*
-		Attempt to load the resource bundle from cache
-		
-		@return Boolean True if successful, False if could not load from cache
-	*/
-	@SuppressWarnings("unchecked")
-	private Boolean loadFromCache() throws java.lang.Exception {
-		
-		// if cache is not current, abort
-		if(!CacheUtils.isCacheCurrent(this.getResourceFileName(),this.getResourceCacheFileName()))
-			return false;
-		
-		try{
-		
-			this.mResources = (HashMap<String,ResourceItem>) CacheUtils.getCachedObject(this.getResourceCacheFileName());
-			
-		}catch(java.lang.Exception e){
-			
-			//throw new java.lang.Exception("Error opening resource bundle cache");
-			return false;
-		
-		}
-		
-		// Let them know it was loaded successfully
-		return true;
-		
-	}
-	
-	
-	/*
-		Save the resource bundle to a cache
-		
-		@return null
-	*/
-	private void saveCache(){
-		
-		try{
-			
-			CacheUtils.setCachedObject(this.mResources,this.getResourceCacheFileName());
-			
-		}catch(java.lang.Exception e){
-		
-			// TODO - WARNING LOG
-			//throw new Exception("Error saving resource bundle cache");
-		
-		}
-		
 	}
 	
 	
@@ -242,6 +191,29 @@ public class ResourceBundle implements Serializable {
 		// Grab the already-loaded resource
 		return this.mResources.get(sResourceName);
 	
+	}
+	
+	
+	
+	
+	public final void checkCache() throws codotos.exceptions.ResourceRuntimeException {
+		
+		// If the file was modified since our last check
+		if(new File(this.getResourceFileName()).lastModified() > lLastModified){
+			
+			// To prevent issues when another request comes in at the same time and resources dont exist
+			synchronized(this){
+			
+				// Reset parameters
+				this.mResources.clear();
+				
+				// load the resources again
+				this.loadResources();
+			
+			}
+		
+		}
+
 	}
 	
 	
